@@ -127,7 +127,7 @@ public:
 		std::string procNameStr = char_to_string(procName);
     	attach(procNameStr);
     }    
-	//construtor com string
+	
     MemoryHandler(const std::string& procName)
 	{
 		attach(procName);
@@ -148,12 +148,10 @@ public:
 		
 		while((entry = readdir(dirr)) != NULL)
 		{
-			//check if the directory has a PID name
 			if(isdigit(entry->d_name[0]))
 			{
-				//read the process name from /proc/[PID]/comm
 				std::string pid_str(entry->d_name);
-				std::string comm_path = "/proc/" + pid_str + "/comm";//construct the path
+				std::string comm_path = "/proc/" + pid_str + "/comm";
 				std::ifstream comm_file (comm_path);
 		
 				
@@ -163,9 +161,8 @@ public:
 					std::getline(comm_file, comm_name);
 					comm_file.close();
 
-					//removing new line from file content
 					if(!comm_name.empty() && comm_name.back() == '\n') comm_name.pop_back(); 
-					//comparing process names	
+					
 					if(comm_name == procName)
 				       	{
 						procID = std::stoi(entry->d_name);
