@@ -29,6 +29,7 @@ Requisitos
     Permissões adequadas para acessar a memória do processo alvo (pode ser necessário executar como root ou ajustar ptrace).
 
 Compilação
+    
     g++ -std=c++17 -pthread -o memory_handler main.cpp
 Uso Básico
 
@@ -44,50 +45,66 @@ O programa principal (main) oferece um menu interativo para testar as funcionali
 
 Estrutura da Classe MemoryHandler
 Construtores e Destrutor
+Constrói o objeto e anexa ao processo pelo nome. O construtor com wchar_t converte para string e chama attach().
 
-    MemoryHandler(const wchar_t* procName) e MemoryHandler(const std::string& procName): Constrói o objeto e anexa ao processo pelo nome. O construtor com wchar_t converte para string e chama attach().
+    MemoryHandler(const wchar_t* procName) e MemoryHandler(const std::string& procName)
 
-    ~MemoryHandler(): Limpa recursos (apenas zera o PID).
+Limpa recursos (apenas zera o PID).
 
-void attach(const std::string& procName)
+    ~MemoryHandler() 
 
 Percorre o diretório /proc em busca de processos com o nome fornecido. Lê o arquivo comm de cada PID para comparar. Se encontrar, armazena o PID e encerra. Lança exceção se não achar.
-std::uintptr_t getModuleBaseAddress(const std::string& moduleName)
+
+    void attach(const std::string& procName)
 
 Lê o arquivo /proc/[pid]/maps e procura pela primeira ocorrência do nome do módulo (ex.: "libc.so.6"). Retorna o endereço inicial da região que contém permissão de execução (x). Se o módulo não for encontrado, retorna 0.
-size_t getModuleSize(const std::string& moduleName)
+
+    std::uintptr_t getModuleBaseAddress(const std::string& moduleName)
 
 Similar ao anterior, mas calcula o tamanho total do módulo somando todas as regiões associadas a ele. Retorna o tamanho em bytes.
-std::uintptr_t findSignature(const std::string& moduleName, const std::vector<uint8_t>& signature)
+
+    size_t getModuleSize(const std::string& moduleName)
 
 Procura uma sequência exata de bytes dentro do módulo. Lê a memória em blocos de 4KB e compara byte a byte. Retorna o endereço onde a assinatura foi encontrada ou 0.
-std::uintptr_t findPattern(const std::string& moduleName, const std::string& pattern)
+
+    std::uintptr_t findSignature(const std::string& moduleName, const std::vector<uint8_t>& signature)
 
 Similar a findSignature, mas permite wildcards (representados por "?" ou "??" no padrão). Converte a string do padrão em uma lista de bytes opcionais e faz a busca. Exemplo de padrão: "48 8B ? ? 00".
-bool readMemoryBlock(uintptr_t addr, uint8_t* buffer, size_t size)
+
+    std::uintptr_t findPattern(const std::string& moduleName, const std::string& pattern)
 
 Função auxiliar que lê um bloco de memória do processo via /proc/[pid]/mem. Retorna true se a leitura foi bem-sucedida.
-template<typename T> T readMemory(std::uintptr_t addr)
+
+    bool readMemoryBlock(uintptr_t addr, uint8_t* buffer, size_t size)
 
 Lê um valor do tipo T no endereço especificado. Lança exceção em caso de falha.
-template<typename T> bool writeMemory(std::uintptr_t addr, T val)
+
+    template<typename T> T readMemory(std::uintptr_t addr)
 
 Escreve um valor do tipo T no endereço. Retorna true se bem-sucedido.
-std::vector<MemoryRegion> getValidMemoryRegions()
+
+    template<typename T> bool writeMemory(std::uintptr_t addr, T val)
 
 Lê /proc/[pid]/maps e retorna uma lista de regiões de memória que possuem permissão de leitura (r). Ignora regiões muito grandes (acima de 500 MB) para evitar sobrecarga.
-template<typename T> std::vector<uintptr_t> parallelScan(T value, int numThreads = 0)
+
+    std::vector<MemoryRegion> getValidMemoryRegions()
 
 Realiza um escaneamento paralelo de toda a memória do processo em busca de um valor específico. Divide as regiões de memória entre o número de threads (padrão: hardware concurrency). Cada thread lê blocos de 4KB e compara com o valor. Os endereços encontrados são adicionados a um vetor global com proteção de mutex. Exibe progresso a cada 10%. Retorna todos os endereços que continham o valor no momento do scan.
-template<typename T> std::vector<uintptr_t> refineScan(std::vector<uintptr_t>& addresses, T newValue)
+    
+    template<typename T> std::vector<uintptr_t> parallelScan(T value, int numThreads = 0)
 
 Refina uma lista de endereços previamente encontrada: lê o valor atual de cada endereço e mantém apenas aqueles que são iguais ao novo valor. Remove os demais. Útil para o processo de "next scan" em game trainers.
-bool applyPayLoad(const std::string& moduleName, const std::vector<uint8_t>& signature, const std::vector<uint8_t>& payload, int offset = 0)
+
+    template<typename T> std::vector<uintptr_t> refineScan(std::vector<uintptr_t>& addresses, T newValue)
 
 Procura uma assinatura no módulo e, se encontrada, escreve o payload (sequência de bytes) a partir do endereço + offset. Retorna true se bem-sucedido.
-pid_t GetPID() const
+
+    bool applyPayLoad(const std::string& moduleName, const std::vector<uint8_t>& signature, const std::vector<uint8_t>& payload, int offset = 0)
 
 Retorna o PID do processo anexado.
+
+    pid_t GetPID() const
+
 Estratégias Adotadas
 
     Acesso via /proc: Em vez de usar ptrace ou chamadas de sistema específicas, optou-se por ler e escrever diretamente nos arquivos /proc/[pid]/mem e /proc/[pid]/maps. Isso é mais simples e eficiente para leitura em massa.
@@ -104,7 +121,7 @@ Estratégias Adotadas
 
 Notas sobre o Desenvolvimento
 
-Este código foi desenvolvido como parte de um estudo autônomo, baseado em conceitos aprendidos nas disciplinas de Organização e Arquitetura de Computadores I (OAC1), Algoritmos e Estruturas de Dados II (AED2), Programação Orientada a Objetos (POO) e tópicos avançados de programação paralela. Devido à natureza autodidata e à falta de experiência prévia com manipulação de memória em Linux, o código pode conter imperfeições, como:
+Este código foi desenvolvido como parte de um estudo autônomo, baseado em conceitos aprendidos nas disciplinas de Organização e Arquitetura de Computadores I (OAC1), Algoritmos e Estruturas de Dados II (AED2), Programação Orientada a Objetos (POO) e tópicos de programação paralela. Devido à natureza autodidata e à falta de experiência prévia com manipulação de memória em Linux, o código pode conter imperfeições, como:
 
     Tratamento de erros limitado em alguns pontos.
 
